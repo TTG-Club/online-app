@@ -1,0 +1,61 @@
+server:
+  port: 8092
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: ttg-online-service
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DB:0}
+      timeout: 2s
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+
+online:
+  # Сайты, которые разрешено учитывать. Добавление нового сайта = добавить siteId в этот список.
+  allowed-sites:
+    - "new"
+    - "5e14"
+
+  # Значение по умолчанию для windowMinutes, если параметр не передали
+  default-window-minutes: 30
+
+  # Ограничение окна (чтобы не давать клиенту ставить 999999)
+  min-window-minutes: 1
+  max-window-minutes: 1440
+
+  # Параметры хранения в Redis
+  redis:
+    key-prefix: "online:"
+    # как часто (сек) можно запускать периодическую очистку "устаревших" записей,
+    # если вы сделаете scheduled-cleaner (опционально)
+    cleanup:
+      enabled: true
+      fixed-delay: 30s
+
+  # Защита межсервисного вызова: сайты (их backend) шлют этот токен в заголовке X-Online-Token
+  security:
+    enabled: true
+    header: X-Online-Token
+    token: ${ONLINE_SERVICE_TOKEN:change-me}
+
+logging:
+  level:
+    root: INFO
+    club.ttg.online: INFO
