@@ -9,7 +9,7 @@ COPY --link src src
 RUN --mount=type=cache,target=/root/.m2 \
     mvn package -B -DskipTests
 
-RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../online.jar)
+RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../online.ttg.club.jar)
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
