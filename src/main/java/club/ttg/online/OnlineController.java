@@ -31,7 +31,7 @@ public class OnlineController
     private final OnlineProperties properties;
 
     @PostMapping("/heartbeat")
-    public ResponseEntity<Void> heartbeat(@Valid @RequestBody HeartbeatRequest request)
+    public ResponseEntity<HeartbeatResponse> heartbeat(@Valid @RequestBody HeartbeatRequest request)
     {
         String siteId = normalizeSiteId(request.siteId());
 
@@ -42,8 +42,13 @@ public class OnlineController
 
         Instant now = Instant.now();
         service.heartbeat(request.type(), siteId, request.key(), request.previousGuestKey(), now);
+        OnlineUserService.OnlineCount count = service.getCount(
+                siteId,
+                Duration.ofMinutes(properties.getDefaultWindowMinutes()),
+                now
+        );
 
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(new HeartbeatResponse(count.total()));
     }
 
     @GetMapping("/stats")
@@ -157,6 +162,10 @@ public class OnlineController
                 throw new IllegalArgumentException("type is required");
             }
         }
+    }
+
+    public record HeartbeatResponse(long total)
+    {
     }
 
     public record OnlineStatsResponse(

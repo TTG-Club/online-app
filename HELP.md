@@ -78,7 +78,11 @@ The service removes this key from `online:{siteId}:guest`, so the same person is
 
 ### Response
 
-204 No Content
+200 OK
+
+{
+"total": 12
+}
 
 ---
 
