@@ -27,7 +27,7 @@ springdoc:
   api-docs:
     enabled: false
   swagger-ui:
-    enabled: false
+    enabled: true
 
 online:
   # Сайты, которые разрешено учитывать. Добавление нового сайта = добавить siteId в этот список.
