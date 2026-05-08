@@ -72,6 +72,28 @@ class RedisOnlineUserServiceTest
     }
 
     @Test
+    void getTotalCountSumsEveryAllowedSite()
+    {
+        Instant now = Instant.parse("2026-05-08T08:00:00Z");
+        properties.setAllowedSites(List.of("new", "5e14"));
+
+        when(zSetOperations.count("online:new:guest", 1778225400001d, 1778227200000d))
+                .thenReturn(2L);
+        when(zSetOperations.count("online:new:registered", 1778225400001d, 1778227200000d))
+                .thenReturn(3L);
+        when(zSetOperations.count("online:5e14:guest", 1778225400001d, 1778227200000d))
+                .thenReturn(4L);
+        when(zSetOperations.count("online:5e14:registered", 1778225400001d, 1778227200000d))
+                .thenReturn(5L);
+
+        OnlineUserService.OnlineCount count = service.getTotalCount(Duration.ofMinutes(30), now);
+
+        assertEquals(6, count.guests());
+        assertEquals(8, count.registered());
+        assertEquals(14, count.total());
+    }
+
+    @Test
     void cleanupExpiredCleansEveryAllowedSiteAndType()
     {
         Instant now = Instant.parse("2026-05-08T08:00:00Z");

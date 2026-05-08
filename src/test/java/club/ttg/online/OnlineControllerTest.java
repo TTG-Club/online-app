@@ -28,7 +28,7 @@ class OnlineControllerTest
     }
 
     @Test
-    void heartbeatReturnsTotalForSiteDefaultWindow()
+    void heartbeatReturnsTotalForAllSitesDefaultWindow()
     {
         OnlineController.HeartbeatRequest request = new OnlineController.HeartbeatRequest(
                 "new",
@@ -36,7 +36,7 @@ class OnlineControllerTest
                 null,
                 OnlineType.GUEST
         );
-        when(service.getCount(eq("new"), eq(Duration.ofMinutes(30)), any(Instant.class)))
+        when(service.getTotalCount(eq(Duration.ofMinutes(30)), any(Instant.class)))
                 .thenReturn(new OnlineUserService.OnlineCount(2, 3));
 
         ResponseEntity<OnlineController.HeartbeatResponse> response = controller.heartbeat(request);
@@ -45,5 +45,6 @@ class OnlineControllerTest
         assertNotNull(response.getBody());
         assertEquals(5, response.getBody().total());
         verify(service).heartbeat(eq(OnlineType.GUEST), eq("new"), eq("visitor-123"), eq(null), any(Instant.class));
+        verify(service).getTotalCount(eq(Duration.ofMinutes(30)), any(Instant.class));
     }
 }

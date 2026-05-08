@@ -11,6 +11,8 @@ public interface OnlineUserService
 
     OnlineCount getCount(String siteId, Duration window, Instant now);
 
+    OnlineCount getTotalCount(Duration window, Instant now);
+
     void cleanupExpired(Instant now);
 
     record OnlineCount(long guests, long registered)

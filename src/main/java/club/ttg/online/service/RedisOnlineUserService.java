@@ -64,6 +64,23 @@ public class RedisOnlineUserService implements OnlineUserService
     }
 
     @Override
+    public OnlineCount getTotalCount(Duration window, Instant now)
+    {
+        Objects.requireNonNull(window, "window");
+        Objects.requireNonNull(now, "now");
+
+        return properties.getAllowedSites().stream()
+                .map(siteId -> getCount(siteId, window, now))
+                .reduce(
+                        new OnlineCount(0, 0),
+                        (acc, count) -> new OnlineCount(
+                                acc.guests() + count.guests(),
+                                acc.registered() + count.registered()
+                        )
+                );
+    }
+
+    @Override
     public void cleanupExpired(Instant now)
     {
         Objects.requireNonNull(now, "now");

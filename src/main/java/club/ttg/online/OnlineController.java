@@ -42,8 +42,7 @@ public class OnlineController
 
         Instant now = Instant.now();
         service.heartbeat(request.type(), siteId, request.key(), request.previousGuestKey(), now);
-        OnlineUserService.OnlineCount count = service.getCount(
-                siteId,
+        OnlineUserService.OnlineCount count = service.getTotalCount(
                 Duration.ofMinutes(properties.getDefaultWindowMinutes()),
                 now
         );
