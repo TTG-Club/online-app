@@ -63,11 +63,26 @@ public class RedisOnlineUserService implements OnlineUserService
         return new OnlineCount(guests, registered);
     }
 
+    @Override
+    public void cleanupExpired(Instant now)
+    {
+        Objects.requireNonNull(now, "now");
+
+        Duration cleanupWindow = Duration.ofMinutes(properties.getDefaultWindowMinutes());
+        Instant threshold = now.minus(cleanupWindow);
+
+        properties.getAllowedSites().forEach(siteId -> {
+            cleanup(redisKey(siteId, OnlineType.GUEST), threshold);
+            cleanup(redisKey(siteId, OnlineType.REGISTERED), threshold);
+        });
+    }
+
     private long countWindow(String key, Instant fromInclusive, Instant toInclusive)
     {
+        Instant activeFrom = fromInclusive.plusMillis(1);
         Long result = redisTemplate.opsForZSet().count(
                 key,
-                (double) fromInclusive.toEpochMilli(),
+                (double) activeFrom.toEpochMilli(),
                 (double) toInclusive.toEpochMilli()
         );
 

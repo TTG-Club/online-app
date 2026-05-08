@@ -5,6 +5,7 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,6 +29,15 @@ public class OnlineProperties
     public static class Redis
     {
         private String keyPrefix = "online:";
+        private Cleanup cleanup = new Cleanup();
+    }
+
+    @Getter
+    @Setter
+    public static class Cleanup
+    {
+        private boolean enabled = true;
+        private Duration fixedDelay = Duration.ofSeconds(30);
     }
 
     @Getter

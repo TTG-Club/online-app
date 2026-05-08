@@ -6,8 +6,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -46,5 +49,40 @@ class RedisOnlineUserServiceTest
 
         verify(zSetOperations).add("online:new:guest", "visitor-123", 1778227200000d);
         verify(zSetOperations, never()).remove("online:new:guest", "visitor-123");
+    }
+
+    @Test
+    void getCountCleansExpiredUsersAndCountsOnlyUsersAfterWindow()
+    {
+        Instant now = Instant.parse("2026-05-08T08:00:00Z");
+        Instant threshold = now.minus(Duration.ofMinutes(30));
+
+        when(zSetOperations.count("online:new:guest", 1778225400001d, 1778227200000d))
+                .thenReturn(2L);
+        when(zSetOperations.count("online:new:registered", 1778225400001d, 1778227200000d))
+                .thenReturn(3L);
+
+        OnlineUserService.OnlineCount count = service.getCount("new", Duration.ofMinutes(30), now);
+
+        assertEquals(2, count.guests());
+        assertEquals(3, count.registered());
+        assertEquals(5, count.total());
+        verify(zSetOperations).removeRangeByScore("online:new:guest", 0d, (double) threshold.toEpochMilli());
+        verify(zSetOperations).removeRangeByScore("online:new:registered", 0d, (double) threshold.toEpochMilli());
+    }
+
+    @Test
+    void cleanupExpiredCleansEveryAllowedSiteAndType()
+    {
+        Instant now = Instant.parse("2026-05-08T08:00:00Z");
+        Instant threshold = now.minus(Duration.ofMinutes(30));
+        properties.setAllowedSites(List.of("new", "5e14"));
+
+        service.cleanupExpired(now);
+
+        verify(zSetOperations).removeRangeByScore("online:new:guest", 0d, (double) threshold.toEpochMilli());
+        verify(zSetOperations).removeRangeByScore("online:new:registered", 0d, (double) threshold.toEpochMilli());
+        verify(zSetOperations).removeRangeByScore("online:5e14:guest", 0d, (double) threshold.toEpochMilli());
+        verify(zSetOperations).removeRangeByScore("online:5e14:registered", 0d, (double) threshold.toEpochMilli());
     }
 }
