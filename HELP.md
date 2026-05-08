@@ -176,27 +176,8 @@ max-window-minutes: 1440
 redis:
 key-prefix: online:
 
-security:
-enabled: true
-header: X-Online-Token
-token: ${ONLINE_SERVICE_TOKEN}
-
 cors:
 enabled: false
-
----
-
-# Безопасность
-
-Heartbeat должен отправляться **только backend-сервисами сайтов**.
-
-Используется заголовок:
-
-X-Online-Token
-
-Значение задаётся через переменную окружения:
-
-ONLINE_SERVICE_TOKEN
 
 ---
 

@@ -21,7 +21,6 @@ public class OnlineProperties
     private long maxWindowMinutes = 1440;
 
     private Redis redis = new Redis();
-    private Security security = new Security();
     private Cors cors = new Cors();
 
     @Getter
@@ -29,15 +28,6 @@ public class OnlineProperties
     public static class Redis
     {
         private String keyPrefix = "online:";
-    }
-
-    @Getter
-    @Setter
-    public static class Security
-    {
-        private boolean enabled = true;
-        private String header = "X-Online-Token";
-        private String token = "change-me";
     }
 
     @Getter

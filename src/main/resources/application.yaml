@@ -45,12 +45,6 @@ online:
       enabled: true
       fixed-delay: 30s
 
-  # Защита межсервисного вызова: сайты (их backend) шлют этот токен в заголовке X-Online-Token
-  security:
-    enabled: true
-    header: X-Online-Token
-    token: ${ONLINE_SERVICE_TOKEN:change-me}
-
 logging:
   level:
     root: INFO
