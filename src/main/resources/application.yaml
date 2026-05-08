@@ -14,10 +14,6 @@ spring:
       database: ${REDIS_DB:0}
       timeout: 2s
 
-  jackson:
-    serialization:
-      write-dates-as-timestamps: false
-
 management:
   endpoints:
     web:
