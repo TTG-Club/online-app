@@ -23,11 +23,18 @@ management:
     health:
       show-details: when_authorized
 
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
 online:
   # Сайты, которые разрешено учитывать. Добавление нового сайта = добавить siteId в этот список.
   allowed-sites:
-    - "new"
+    - "5e24"
     - "5e14"
+    - "vttg"
 
   # Значение по умолчанию для windowMinutes, если параметр не передали
   default-window-minutes: 30
