@@ -7,7 +7,7 @@ import java.time.Instant;
 
 public interface OnlineUserService
 {
-    void heartbeat(OnlineType type, String siteId, String key, Instant now);
+    void heartbeat(OnlineType type, String siteId, String key, String previousGuestKey, Instant now);
 
     OnlineCount getCount(String siteId, Duration window, Instant now);
 

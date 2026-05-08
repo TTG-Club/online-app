@@ -41,7 +41,7 @@ public class OnlineController
         }
 
         Instant now = Instant.now();
-        service.heartbeat(request.type(), siteId, request.key(), now);
+        service.heartbeat(request.type(), siteId, request.key(), request.previousGuestKey(), now);
 
         return ResponseEntity.noContent().build();
     }
@@ -122,7 +122,7 @@ public class OnlineController
                 ? properties.getDefaultWindowMinutes()
                 : requestedMinutes;
 
-        long clamped = Math.max(properties.getMinWindowMinutes(), Math.min(minutes, properties.getMaxWindowMinutes()));
+        long clamped = Math.clamp(minutes, properties.getMinWindowMinutes(), properties.getMaxWindowMinutes());
 
         return Duration.ofMinutes(clamped);
     }
@@ -143,6 +143,9 @@ public class OnlineController
             @NotBlank
             @Size(max = 128)
             String key,
+
+            @Size(max = 128)
+            String previousGuestKey,
 
             OnlineType type
     )

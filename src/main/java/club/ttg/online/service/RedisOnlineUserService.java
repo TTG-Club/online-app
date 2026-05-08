@@ -5,6 +5,7 @@ import club.ttg.online.OnlineType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -18,7 +19,7 @@ public class RedisOnlineUserService implements OnlineUserService
     private final OnlineProperties properties;
 
     @Override
-    public void heartbeat(OnlineType type, String siteId, String key, Instant now)
+    public void heartbeat(OnlineType type, String siteId, String key, String previousGuestKey, Instant now)
     {
         Objects.requireNonNull(type, "type");
         Objects.requireNonNull(siteId, "siteId");
@@ -30,6 +31,11 @@ public class RedisOnlineUserService implements OnlineUserService
 
         // обновляем lastSeen
         redisTemplate.opsForZSet().add(redisKey, key, score);
+
+        if (type == OnlineType.REGISTERED && StringUtils.hasText(previousGuestKey))
+        {
+            redisTemplate.opsForZSet().remove(redisKey(siteId, OnlineType.GUEST), previousGuestKey);
+        }
 
         // лёгкая чистка (по дефолтному окну) - чтобы ключи не пухли, даже если stats не вызывают
         Duration cleanupWindow = Duration.ofMinutes(properties.getDefaultWindowMinutes());

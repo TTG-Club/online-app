@@ -71,6 +71,11 @@ POST /api/v1/online/heartbeat
 GUEST
 REGISTERED
 
+### previousGuestKey
+
+Optional. Send it with `type: "REGISTERED"` when a visitor has just logged in.
+The service removes this key from `online:{siteId}:guest`, so the same person is not counted as both guest and registered during the stats window.
+
 ### Response
 
 204 No Content
@@ -203,6 +208,7 @@ POST /api/v1/online/heartbeat
 {
 "siteId": "new",
 "key": "userId",
+"previousGuestKey": "visitorId",
 "type": "REGISTERED"
 }
 
