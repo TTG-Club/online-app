@@ -15,31 +15,60 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class RedisOnlineUserService implements OnlineUserService
 {
+    /**
+     * Набор тех, кто сейчас в игровом мире. Ключи в нём те же, что в наборах гостей и
+     * зарегистрированных, поэтому один человек остаётся одним человеком, а не превращается в двоих.
+     */
+    private static final String IN_WORLD_BUCKET = "in-world";
+
     private final StringRedisTemplate redisTemplate;
     private final OnlineProperties properties;
 
     @Override
-    public void heartbeat(OnlineType type, String siteId, String key, String previousGuestKey, Instant now)
+    public void heartbeat(
+            OnlineType type,
+            String siteId,
+            String key,
+            String previousGuestKey,
+            boolean inWorld,
+            Instant now
+    )
     {
         Objects.requireNonNull(type, "type");
         Objects.requireNonNull(siteId, "siteId");
         Objects.requireNonNull(key, "key");
         Objects.requireNonNull(now, "now");
 
-        String redisKey = redisKey(siteId, type);
+        String redisKey = redisKey(siteId, bucket(type));
+        String inWorldKey = redisKey(siteId, IN_WORLD_BUCKET);
         double score = (double) now.toEpochMilli();
 
         // обновляем lastSeen
         redisTemplate.opsForZSet().add(redisKey, key, score);
 
+        // Из мира выходят молча, поэтому «уже не в мире» - это отсутствие признака в сигнале.
+        // Без явного удаления посетитель числился бы играющим до конца окна учёта.
+        if (inWorld)
+        {
+            redisTemplate.opsForZSet().add(inWorldKey, key, score);
+        }
+        else
+        {
+            redisTemplate.opsForZSet().remove(inWorldKey, key);
+        }
+
         if (type == OnlineType.REGISTERED && StringUtils.hasText(previousGuestKey))
         {
-            redisTemplate.opsForZSet().remove(redisKey(siteId, OnlineType.GUEST), previousGuestKey);
+            redisTemplate.opsForZSet().remove(redisKey(siteId, bucket(OnlineType.GUEST)), previousGuestKey);
+            redisTemplate.opsForZSet().remove(inWorldKey, previousGuestKey);
         }
 
         // лёгкая чистка (по дефолтному окну) - чтобы ключи не пухли, даже если stats не вызывают
         Duration cleanupWindow = Duration.ofMinutes(properties.getDefaultWindowMinutes());
-        cleanup(redisKey, now.minus(cleanupWindow));
+        Instant threshold = now.minus(cleanupWindow);
+
+        cleanup(redisKey, threshold);
+        cleanup(inWorldKey, threshold);
     }
 
     @Override
@@ -49,18 +78,21 @@ public class RedisOnlineUserService implements OnlineUserService
         Objects.requireNonNull(window, "window");
         Objects.requireNonNull(now, "now");
 
-        String guestsKey = redisKey(siteId, OnlineType.GUEST);
-        String registeredKey = redisKey(siteId, OnlineType.REGISTERED);
+        String guestsKey = redisKey(siteId, bucket(OnlineType.GUEST));
+        String registeredKey = redisKey(siteId, bucket(OnlineType.REGISTERED));
+        String inWorldKey = redisKey(siteId, IN_WORLD_BUCKET);
 
         Instant threshold = now.minus(window);
 
         cleanup(guestsKey, threshold);
         cleanup(registeredKey, threshold);
+        cleanup(inWorldKey, threshold);
 
         long guests = countWindow(guestsKey, threshold, now);
         long registered = countWindow(registeredKey, threshold, now);
+        long players = countWindow(inWorldKey, threshold, now);
 
-        return new OnlineCount(guests, registered);
+        return new OnlineCount(guests, registered, players);
     }
 
     @Override
@@ -72,10 +104,11 @@ public class RedisOnlineUserService implements OnlineUserService
         return properties.getAllowedSites().stream()
                 .map(siteId -> getCount(siteId, window, now))
                 .reduce(
-                        new OnlineCount(0, 0),
+                        new OnlineCount(0, 0, 0),
                         (acc, count) -> new OnlineCount(
                                 acc.guests() + count.guests(),
-                                acc.registered() + count.registered()
+                                acc.registered() + count.registered(),
+                                acc.players() + count.players()
                         )
                 );
     }
@@ -89,8 +122,9 @@ public class RedisOnlineUserService implements OnlineUserService
         Instant threshold = now.minus(cleanupWindow);
 
         properties.getAllowedSites().forEach(siteId -> {
-            cleanup(redisKey(siteId, OnlineType.GUEST), threshold);
-            cleanup(redisKey(siteId, OnlineType.REGISTERED), threshold);
+            cleanup(redisKey(siteId, bucket(OnlineType.GUEST)), threshold);
+            cleanup(redisKey(siteId, bucket(OnlineType.REGISTERED)), threshold);
+            cleanup(redisKey(siteId, IN_WORLD_BUCKET), threshold);
         });
     }
 
@@ -111,11 +145,16 @@ public class RedisOnlineUserService implements OnlineUserService
         redisTemplate.opsForZSet().removeRangeByScore(key, 0d, (double) thresholdExclusive.toEpochMilli());
     }
 
-    private String redisKey(String siteId, OnlineType type)
+    private String bucket(OnlineType type)
+    {
+        return type.name().toLowerCase();
+    }
+
+    private String redisKey(String siteId, String bucket)
     {
         String prefix = properties.getRedis().getKeyPrefix();
         String normalizedSiteId = siteId.trim().toLowerCase();
 
-        return prefix + normalizedSiteId + ":" + type.name().toLowerCase();
+        return prefix + normalizedSiteId + ":" + bucket;
     }
 }
