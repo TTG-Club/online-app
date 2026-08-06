@@ -41,7 +41,14 @@ public class OnlineController
         }
 
         Instant now = Instant.now();
-        service.heartbeat(request.type(), siteId, request.key(), request.previousGuestKey(), now);
+        service.heartbeat(
+                request.type(),
+                siteId,
+                request.key(),
+                request.previousGuestKey(),
+                Boolean.TRUE.equals(request.inWorld()),
+                now
+        );
         OnlineUserService.OnlineCount count = service.getTotalCount(
                 Duration.ofMinutes(properties.getDefaultWindowMinutes()),
                 now
@@ -63,14 +70,22 @@ public class OnlineController
 
         OnlineTotals totals = sites.stream()
                 .reduce(
-                        new OnlineTotals(0, 0),
-                        (acc, s) -> new OnlineTotals(acc.guests() + s.guests(), acc.registered() + s.registered()),
-                        (a, b) -> new OnlineTotals(a.guests() + b.guests(), a.registered() + b.registered())
+                        new OnlineTotals(0, 0, 0),
+                        (acc, s) -> new OnlineTotals(
+                                acc.guests() + s.guests(),
+                                acc.registered() + s.registered(),
+                                acc.players() + s.players()
+                        ),
+                        (a, b) -> new OnlineTotals(
+                                a.guests() + b.guests(),
+                                a.registered() + b.registered(),
+                                a.players() + b.players()
+                        )
                 );
 
         return new OnlineStatsResponse(
                 window.toMinutes(),
-                new OnlineTotalsWithTotal(totals.guests(), totals.registered(), totals.total()),
+                new OnlineTotalsWithTotal(totals.guests(), totals.registered(), totals.players(), totals.total()),
                 sites
         );
     }
@@ -90,6 +105,7 @@ public class OnlineController
                     normalized,
                     0,
                     0,
+                    0,
                     0
             );
         }
@@ -104,6 +120,7 @@ public class OnlineController
                 stats.siteId(),
                 stats.guests(),
                 stats.registered(),
+                stats.players(),
                 stats.total()
         );
     }
@@ -116,6 +133,7 @@ public class OnlineController
                 siteId,
                 count.guests(),
                 count.registered(),
+                count.players(),
                 count.total()
         );
     }
@@ -151,7 +169,13 @@ public class OnlineController
             @Size(max = 128)
             String previousGuestKey,
 
-            OnlineType type
+            OnlineType type,
+
+            /*
+             * Посетитель прямо сейчас в игровом мире. Не обязателен: сайты и старые версии
+             * приложения его не шлют, для них признак просто всегда снят.
+             */
+            Boolean inWorld
     )
     {
         public HeartbeatRequest
@@ -180,21 +204,27 @@ public class OnlineController
             String siteId,
             long guests,
             long registered,
+            long players,
             long total
     )
     {
     }
 
+    /**
+     * @param players сколько посетителей сейчас в игровых мирах. Это подмножество гостей и
+     *                зарегистрированных, поэтому в {@code total} оно не складывается.
+     */
     public record OnlineSiteStats(
             String siteId,
             long guests,
             long registered,
+            long players,
             long total
     )
     {
     }
 
-    public record OnlineTotals(long guests, long registered)
+    public record OnlineTotals(long guests, long registered, long players)
     {
         public long total()
         {
@@ -202,7 +232,7 @@ public class OnlineController
         }
     }
 
-    public record OnlineTotalsWithTotal(long guests, long registered, long total)
+    public record OnlineTotalsWithTotal(long guests, long registered, long players, long total)
     {
     }
 }

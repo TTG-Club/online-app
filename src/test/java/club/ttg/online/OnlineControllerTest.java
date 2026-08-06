@@ -34,17 +34,65 @@ class OnlineControllerTest
                 "new",
                 "visitor-123",
                 null,
-                OnlineType.GUEST
+                OnlineType.GUEST,
+                null
         );
         when(service.getTotalCount(eq(Duration.ofMinutes(30)), any(Instant.class)))
-                .thenReturn(new OnlineUserService.OnlineCount(2, 3));
+                .thenReturn(new OnlineUserService.OnlineCount(2, 3, 0));
 
         ResponseEntity<OnlineController.HeartbeatResponse> response = controller.heartbeat(request);
 
         assertEquals(200, response.getStatusCode().value());
         assertNotNull(response.getBody());
         assertEquals(5, response.getBody().total());
-        verify(service).heartbeat(eq(OnlineType.GUEST), eq("new"), eq("visitor-123"), eq(null), any(Instant.class));
+        verify(service).heartbeat(
+                eq(OnlineType.GUEST),
+                eq("new"),
+                eq("visitor-123"),
+                eq(null),
+                eq(false),
+                any(Instant.class)
+        );
         verify(service).getTotalCount(eq(Duration.ofMinutes(30)), any(Instant.class));
+    }
+
+    @Test
+    void heartbeatPassesWorldFlagToService()
+    {
+        OnlineController.HeartbeatRequest request = new OnlineController.HeartbeatRequest(
+                "new",
+                "user-42",
+                null,
+                OnlineType.REGISTERED,
+                true
+        );
+        when(service.getTotalCount(eq(Duration.ofMinutes(30)), any(Instant.class)))
+                .thenReturn(new OnlineUserService.OnlineCount(0, 1, 1));
+
+        controller.heartbeat(request);
+
+        verify(service).heartbeat(
+                eq(OnlineType.REGISTERED),
+                eq("new"),
+                eq("user-42"),
+                eq(null),
+                eq(true),
+                any(Instant.class)
+        );
+    }
+
+    @Test
+    void statsReportPlayersWithoutAddingThemToTotal()
+    {
+        when(service.getCount(eq("new"), eq(Duration.ofMinutes(30)), any(Instant.class)))
+                .thenReturn(new OnlineUserService.OnlineCount(2, 3, 4));
+
+        OnlineController.OnlineStatsResponse response = controller.stats(null);
+
+        assertEquals(1, response.sites().size());
+        assertEquals(4, response.sites().getFirst().players());
+        assertEquals(5, response.sites().getFirst().total());
+        assertEquals(4, response.total().players());
+        assertEquals(5, response.total().total());
     }
 }
